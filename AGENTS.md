@@ -437,4 +437,32 @@ Trams pause at intermediate track points (`TramSystem_Trigger`) to wait for blas
    - `Append(A, B, C)` outputs `A + B + C`.
    - When mapping routing keys formatted as `Origin->Destination` (e.g., `TramSystem_Station_C_11->TramSystem_Station_C_14`), ensure `Previous Station` feeds pin `A` and `Target Station` feeds pin `C`. Swapping pins generates `Destination->Origin`, breaking dictionary lookups.
 
+---
+
+## 14. Transit Audio Architecture & Looping Announcement Lifecycle (CMTA)
+
+### A. Universal Lead-In Cue & Raw Voice Wave Decoupling
+* **The Problem**: Authoring 20+ composite Sound Cues with duplicated Bing-Bong chimes, voice delays, and Stand Clear announcements is redundant and tedious.
+* **The Solution**: 
+  - Create a single universal lead-in cue: **`SC_Dep_LeadIn`** (Bing-Bong + Stand Clear voice @ 0.8s delay, ~3.35s total duration).
+  - Store route-specific voice lines as raw **`USoundWave`** assets directly in `DepartureSounds` (`TMap<String, SoundBase>`).
+  - Sequence them via Blueprint in `Multicast_PlayTramSound`: spawn `SC_Dep_LeadIn`, wait `3.6s` (`Delay`), then spawn the route `USoundWave`.
+
+### B. Unreal Engine `AudioComponent::Stop()` & `OnAudioFinished` Gotcha
+* **Engine Quirk**: In Unreal Engine, calling **`AudioComponent->Stop()`** forcefully broadcasts the **`OnAudioFinished`** delegate on that audio component!
+* **The Trap**: If arrival logic cuts off an active in-flight announcement using `ActiveAudioPerTram.Find(Tram)->Stop()`, that cut-off sound immediately fires `OnAudioFinished`, causing any chained loop (like `PSA_Loop`) to wake up and queue a new countdown while the vehicle is sitting docked at the station!
+
+### C. Latent `Delay` Persistence & Ghost Timers
+* Unreal Engine latent **`Delay`** nodes cannot be cancelled once started.
+* If a tram arrives at a station and departs again before a latent `Delay (8.0s)` elapses, the countdown completes on the new trip and fires its audio concurrently with the new trip's departure sequence.
+
+### D. `IsDepartureQueued` State Lock Pattern
+To guarantee zero audio overlap across rapid station turnarounds:
+1. Maintain **`IsDepartureQueued`** (`TMap<Tram_ParentBP, Boolean>`).
+2. **On Departure Start**: Set `IsDepartureQueued.Add(Tram, True)`.
+3. **On Route Announcement Finished (`OnAudioFinished_Event`)**: Set `IsDepartureQueued.Add(Tram, False)`.
+4. **On Station Arrival (`IsArrival = True`)**: Reset `IsDepartureQueued.Add(Tram, False)`.
+5. **In `PSA_Loop`**: Before playing any PSA, check `IsDepartureQueued.Find(Tram)`. If `True`, terminate immediately! Any background ghost delay from a previous trip hits this gate, sees `true`, and is permanently destroyed.
+
+
 
