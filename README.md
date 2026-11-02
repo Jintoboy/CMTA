@@ -91,14 +91,17 @@ To prevent client-server desync and audio doubling:
 
 | Line / Destination | Origin Station | Target Station | Trigger Event | Sound Key | Audio Asset |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Manufacturing West** | **Office Plaza** (`C_1`) | **MF West** (`C_5`) | Departure | `TramSystem_Station_C_1->TramSystem_Station_C_5` | `SC_Dep_Office_To_MFWest` |
+| **Manufacturing West** | **Office Plaza** (`C_1`) | **MF West** (`C_5`) | Departure (Outbound) | `TramSystem_Station_C_1->TramSystem_Station_C_5` | `SC_Dep_Office_To_MFWest` |
 | **Manufacturing West** | — | **MF West** (`C_5`) | Arrival | `TramSystem_Station_C_5` | `S_MTA_Arr_MFWest` |
+| **Manufacturing West** | **MF West** (`C_5`) | **Office Plaza** (`C_1`) | Departure (Inbound) | `TramSystem_Station_C_5->TramSystem_Station_C_1` | `SC_Dep_MFWest_To_Office` |
 | **Manufacturing West** | — | **Office Plaza** (`C_1`) | Arrival (Transfer) | `TramSystem_Station_C_1` | `S_MTA_Arr_OfficePlaza_MFWest` |
-| **The Mines** | **Office Plaza** (`C_3`) | **The Mines** (`C_2`) | Departure | `TramSystem_Station_C_3->TramSystem_Station_C_2` | `SC_Dep_Office_To_Mines` |
+| **The Mines** | **Office Plaza** (`C_3`) | **The Mines** (`C_2`) | Departure (Outbound) | `TramSystem_Station_C_3->TramSystem_Station_C_2` | `SC_Dep_Office_To_Mines` |
 | **The Mines** | — | **The Mines** (`C_2`) | Arrival | `TramSystem_Station_C_2` | `S_MTA_Arr_Mines` |
+| **The Mines** | **The Mines** (`C_2`) | **Office Plaza** (`C_3`) | Departure (Inbound) | `TramSystem_Station_C_2->TramSystem_Station_C_3` | `SC_Dep_Mines_To_Office` |
 | **The Mines** | — | **Office Plaza** (`C_3`) | Arrival (Transfer) | `TramSystem_Station_C_3` | `S_MTA_Arr_OfficePlaza_Mines` |
-| **Hydroplant (Dam)** | **Office Plaza** (`C_20`) | **Hydroplant** (`C_13`) | Departure | `TramSystem_Station_C_20->TramSystem_Station_C_13` | `SC_Dep_Office_To_Hydroplant` |
+| **Hydroplant (Dam)** | **Office Plaza** (`C_20`) | **Hydroplant** (`C_13`) | Departure (Outbound) | `TramSystem_Station_C_20->TramSystem_Station_C_13` | `SC_Dep_Office_To_Hydroplant` |
 | **Hydroplant (Dam)** | — | **Hydroplant** (`C_13`) | Arrival | `TramSystem_Station_C_13` | `S_MTA_Arr_Hydroplant` |
+| **Hydroplant (Dam)** | **Hydroplant** (`C_13`) | **Office Plaza** (`C_20`) | Departure (Inbound) | `TramSystem_Station_C_13->TramSystem_Station_C_20` | `SC_Dep_Hydroplant_To_Office` |
 | **Hydroplant (Dam)** | — | **Office Plaza** (`C_20`) | Arrival (Transfer) | `TramSystem_Station_C_20` | `S_MTA_Arr_OfficePlaza_Hydroplant` |
 
 ---
