@@ -390,6 +390,12 @@ When attaching sounds to moving vehicles (`SpawnSoundAttached` onto `Tram.MainBo
 * As a tram travels through narrow tunnels, passes blast doors, or crosses portal volumes, the occlusion line trace hits geometry and drops volume to zero.
 * For passenger cabin announcements, use **`Attenuation Settings = None`** (or create a custom attenuation asset with **`bEnableOcclusion = false`** and an inner radius encompassing the cabin).
 
+### E. Sound Cue Nesting Limitation (`SoundNodeWavePlayer` vs. Cues)
+* In Unreal Engine's Sound Cue graph editor, there is no node for nesting other Sound Cues (`SoundNodeCuePlayer` does not exist).
+* The **`SoundNodeWavePlayer`** strictly accepts raw **`USoundWave`** assets.
+* Attempting to build composite reusable cues (e.g., a universal chime cue) and drop them into route-specific Sound Cues is impossible in Unreal Engine.
+* **Architecture Rule**: Keep composite clips (like lead-in chimes) as standalone Sound Cues or Waves, and sequence them dynamically in Blueprint (`SpawnSoundAttached` $\rightarrow$ `Delay` $\rightarrow$ `SpawnSoundAttached`).
+
 ---
 
 ## 13. Abiotic Factor Runtime Architecture & Persistent Mod Systems
@@ -463,6 +469,32 @@ To guarantee zero audio overlap across rapid station turnarounds:
 3. **On Route Announcement Finished (`OnAudioFinished_Event`)**: Set `IsDepartureQueued.Add(Tram, False)`.
 4. **On Station Arrival (`IsArrival = True`)**: Reset `IsDepartureQueued.Add(Tram, False)`.
 5. **In `PSA_Loop`**: Before playing any PSA, check `IsDepartureQueued.Find(Tram)`. If `True`, terminate immediately! Any background ghost delay from a previous trip hits this gate, sees `true`, and is permanently destroyed.
+
+### E. Blueprint `Bind Event to On Audio Finished` Execution Semantics
+* Unlike event dispatchers in native C++ or pure helper nodes, **`Bind Event to On Audio Finished`** is an **impure executable Blueprint node** with white execution pins (`Exec In` and `Exec Out`).
+* If you connect the `Target` audio component and the red `Event` delegate without wiring the white execution line, Unreal Engine **silently ignores the binding at runtime with zero compiler errors or warnings**.
+* **Rule**: Always slot `Bind Event to On Audio Finished` directly into the white execution chain immediately following the `Spawn Sound Attached` node.
+
+### F. Object Parameter Typing on Replicated Managers (`Tram_ParentBP` vs Child BPs)
+* When building centralized managers (like `BP_MTA_TramAudioManager`) that communicate across multiple tram types (e.g. `Tram_Default`, custom car blueprints), define all Blueprint event inputs, map keys, and function signatures using the highest common base class: **`Tram_ParentBP`** (Object Reference).
+* Typing parameters as a child class (such as `Tram_Default`) will cause pin-connection type errors or force redundant `Cast To` nodes when passing base actor references from game systems or director components.
+
+### G. Multi-Stage Component Map Tracking (`ActiveAudioPerTram`)
+* When an announcement consists of multiple sequential stages (Lead-In $\rightarrow$ Route Line $\rightarrow$ Random PSA), every single `SpawnSoundAttached` call must update the tram's entry in `ActiveAudioPerTram`:
+  ```text
+  ActiveAudioPerTram.Add(Tram, NewAudioComponent)
+  ```
+* Failing to update the map for the lead-in chime means an immediate arrival or quick reversal cannot call `Stop()` on it, allowing the chime to ring out over the arrival announcement.
+
+### H. State Mutation Ordering on Arrival (`IsTramEnRoute` vs `Stop()`)
+* Because `AudioComponent->Stop()` immediately triggers `OnAudioFinished`, state flags must always be updated **before** calling `Stop()`:
+  ```text
+  1. IsTramEnRoute.Add(Tram, False)        <-- Update state FIRST
+  2. IsDepartureQueued.Add(Tram, False)   <-- Reset queue lock FIRST
+  3. ActiveAudioPerTram.Find(Tram)->Stop() <-- Trigger stop SECOND
+  ```
+* If `Stop()` is executed before clearing `IsTramEnRoute`, the instantaneous `OnAudioFinished` callback will evaluate `IsTramEnRoute` while it is still `True`, creating race conditions and scheduling unwanted timers.
+
 
 
 
